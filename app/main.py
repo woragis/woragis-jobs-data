@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import structlog
 
 from app.config import settings
-from app.api import recommendations, analytics, companies
+from app.api import recommendations, analytics, companies, models
 
 # Configure structured logging
 structlog.configure(
@@ -36,6 +36,7 @@ app.add_middleware(
 app.include_router(recommendations.router, prefix="/api/v1/recommendations", tags=["recommendations"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(companies.router, prefix="/api/v1/companies", tags=["companies"])
+app.include_router(models.router, prefix="/api/v1/models", tags=["models"])
 
 
 @app.get("/healthz")
