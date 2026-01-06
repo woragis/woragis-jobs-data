@@ -84,7 +84,7 @@ def upgrade() -> None:
         sa.Column('accuracy', sa.Float(), nullable=True),
         sa.Column('trained_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column('is_active', sa.String(length=10), nullable=False, server_default='false'),
-        sa.Column('metadata', postgresql.JSON(), nullable=True),
+        sa.Column('model_metadata', postgresql.JSON(), nullable=True),
     )
     op.create_index('idx_models_active', 'ml_models', ['model_name', 'is_active'])
 

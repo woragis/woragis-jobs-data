@@ -89,7 +89,7 @@ class MLModel(Base):
     accuracy = Column(Float, nullable=True)
     trained_at = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(String(10), default='false')  # 'true' or 'false'
-    metadata = Column(JSON, nullable=True)  # Model parameters, features, etc.
+    model_metadata = Column(JSON, nullable=True)  # Model parameters, features, etc. (renamed from 'metadata' - reserved in SQLAlchemy)
     
     __table_args__ = (
         Index('idx_models_active', 'model_name', 'is_active'),
