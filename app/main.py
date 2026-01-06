@@ -48,7 +48,11 @@ async def health_check():
 async def startup_event():
     """Initialize services on startup"""
     logger.info("ML Recommendation Service starting up")
-    # TODO: Initialize database connections, Kafka consumers, etc.
+    # TODO: Start Kafka consumer in background thread if needed
+    # from app.consumers import start_consumer
+    # import threading
+    # consumer_thread = threading.Thread(target=start_consumer, daemon=True)
+    # consumer_thread.start()
 
 
 @app.on_event("shutdown")
