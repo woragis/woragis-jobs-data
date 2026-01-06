@@ -13,11 +13,29 @@ router = APIRouter()
 @router.get("/{user_id}/overview")
 async def get_user_overview(
     user_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = Header(None)
 ):
     """Get user analytics overview"""
     service = AnalyticsService(db)
+    
+    # Try to get from cache/db first
     overview = service.get_user_overview(user_id)
+    
+    # If no data or stale, fetch from jobs service and update
+    if overview["total_applications"] == 0:
+        token = authorization.replace("Bearer ", "") if authorization else None
+        jobs_client = JobsServiceClient()
+        
+        try:
+            applications = await jobs_client.get_user_applications(user_id, token)
+            if applications:
+                # Update metrics
+                service.update_user_metrics(user_id, applications)
+                overview = service.get_user_overview(user_id)
+        finally:
+            await jobs_client.close()
+    
     return overview
 
 
