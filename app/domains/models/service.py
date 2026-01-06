@@ -47,7 +47,7 @@ class MLModelsService:
                 file_path=success_result['file_path'],
                 accuracy=success_result['accuracy'],
                 is_active='true',
-                metadata={"features": success_result['features']}
+                model_metadata={"features": success_result['features']}
             )
             self.db.add(model)
         except Exception as e:
@@ -67,7 +67,7 @@ class MLModelsService:
                 file_path=response_result['file_path'],
                 accuracy=response_result.get('rmse'),  # Store RMSE as accuracy
                 is_active='true',
-                metadata={"features": response_result['features']}
+                model_metadata={"features": response_result['features']}
             )
             self.db.add(model)
         except Exception as e:
