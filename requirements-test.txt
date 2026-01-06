@@ -11,8 +11,8 @@ httpx==0.25.2
 
 # Security testing
 bandit==1.7.5
-safety==2.3.5
-pip-audit==2.6.1
+safety==3.2.0  # Updated to version compatible with newer packaging
+pip-audit==2.7.1  # Updated to version compatible with newer packaging
 
 # Code quality
 black==23.12.1
