@@ -8,13 +8,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from app.database.models import Recommendation
 from app.domains.recommendations.scoring import OpportunityScorer
+from app.cache.redis_cache import RedisCache
 
 
 class RecommendationService:
     """Service for generating and managing recommendations"""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, cache: Optional[RedisCache] = None):
         self.db = db
+        self.cache = cache
         self.scorer = OpportunityScorer()
     
     def generate_recommendations(
@@ -58,28 +60,34 @@ class RecommendationService:
             tier = self.scorer.get_tier(score)
             rec_type = self.scorer.get_recommendation_type(app, score)
             
-            # Store in cache
-            recommendation = Recommendation(
-                id=UUID(),
-                user_id=user_id,
-                application_id=app_id,
-                opportunity_score=score,
-                tier=tier,
-                recommendation_type=rec_type,
-                explanation=explanation,
-                expires_at=datetime.utcnow() + cache_ttl
-            )
-            self.db.add(recommendation)
-            
-            recommendations.append({
-                "application_id": str(app_id),
-                "score": score,
-                "tier": tier,
-                "type": rec_type,
-                "explanation": explanation
-            })
+        # Store in database
+        recommendation = Recommendation(
+            id=UUID(),
+            user_id=user_id,
+            application_id=app_id,
+            opportunity_score=score,
+            tier=tier,
+            recommendation_type=rec_type,
+            explanation=explanation,
+            expires_at=datetime.utcnow() + cache_ttl
+        )
+        self.db.add(recommendation)
+        
+        rec_dict = {
+            "application_id": str(app_id),
+            "score": score,
+            "tier": tier,
+            "type": rec_type,
+            "explanation": explanation
+        }
+        recommendations.append(rec_dict)
         
         self.db.commit()
+        
+        # Cache in Redis
+        if self.cache:
+            self.cache.set_recommendations(user_id, recommendations)
+        
         return recommendations
     
     def get_cached_recommendations(
@@ -89,6 +97,13 @@ class RecommendationService:
         tier: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get cached recommendations for a user"""
+        # Try Redis cache first
+        if self.cache:
+            cached = self.cache.get_recommendations(user_id, limit, tier)
+            if cached:
+                return cached
+        
+        # Fallback to database
         query = select(Recommendation).where(
             and_(
                 Recommendation.user_id == user_id,
@@ -103,7 +118,7 @@ class RecommendationService:
         
         results = self.db.execute(query).scalars().all()
         
-        return [
+        recommendations = [
             {
                 "application_id": str(rec.application_id),
                 "score": rec.opportunity_score,
@@ -113,4 +128,10 @@ class RecommendationService:
             }
             for rec in results
         ]
+        
+        # Cache in Redis
+        if self.cache and recommendations:
+            self.cache.set_recommendations(user_id, recommendations, tier=tier, limit=limit)
+        
+        return recommendations
 

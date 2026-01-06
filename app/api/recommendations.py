@@ -9,6 +9,7 @@ from app.database.base import get_db
 from app.domains.recommendations.service import RecommendationService
 from app.domains.analytics.service import AnalyticsService
 from app.clients.jobs_client import JobsServiceClient
+from app.cache.redis_cache import RedisCache
 
 router = APIRouter()
 
@@ -33,8 +34,11 @@ async def get_recommendations(
     Returns:
         List of recommended applications with scores and explanations
     """
+    # Initialize cache and service
+    cache = RedisCache()
+    rec_service = RecommendationService(db, cache)
+    
     # Try to get cached recommendations first
-    rec_service = RecommendationService(db)
     cached = rec_service.get_cached_recommendations(user_id, limit, tier)
     
     if cached and len(cached) >= limit:

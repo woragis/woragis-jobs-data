@@ -6,6 +6,8 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from app.database.base import get_db
 from app.domains.analytics.service import AnalyticsService
+from app.clients.jobs_client import JobsServiceClient
+from app.cache.redis_cache import RedisCache
 
 router = APIRouter()
 
@@ -17,9 +19,15 @@ async def get_user_overview(
     authorization: Optional[str] = Header(None)
 ):
     """Get user analytics overview"""
+    cache = RedisCache()
     service = AnalyticsService(db)
     
-    # Try to get from cache/db first
+    # Try Redis cache first
+    cached = cache.get_user_metrics(user_id)
+    if cached:
+        return cached
+    
+    # Try to get from database
     overview = service.get_user_overview(user_id)
     
     # If no data or stale, fetch from jobs service and update
@@ -33,6 +41,8 @@ async def get_user_overview(
                 # Update metrics
                 service.update_user_metrics(user_id, applications)
                 overview = service.get_user_overview(user_id)
+                # Cache the updated metrics
+                cache.set_user_metrics(user_id, overview)
         finally:
             await jobs_client.close()
     
@@ -46,11 +56,22 @@ async def get_company_metrics(
     db: Session = Depends(get_db)
 ):
     """Get company-specific metrics for a user"""
+    cache = RedisCache()
     service = AnalyticsService(db)
+    
+    # Try Redis cache first
+    cached = cache.get_company_metrics(company_id)
+    if cached:
+        return cached
+    
+    # Get from database
     metrics = service.get_company_metrics(company_id)
     
     if not metrics:
         raise HTTPException(status_code=404, detail="Company metrics not found")
+    
+    # Cache the metrics
+    cache.set_company_metrics(company_id, metrics)
     
     return metrics
 
