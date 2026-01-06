@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  ml-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ml-recommendation-service
+    ports:
+      - "${ML_SERVICE_PORT:-3020}:3020"
+    environment:
+      - ML_DATABASE_URL=postgresql://woragis:password@ml-database:5432/ml_service
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://ml-redis:6379/1
+      - ML_SERVICE_PORT=3020
+      - ML_SERVICE_HOST=0.0.0.0
+      - AUTH_SERVICE_URL=http://auth-service:3000
+      - JOBS_SERVICE_URL=http://jobs-service:3000
+    volumes:
+      - ./app:/app/app
+      - ./models:/app/models
+    depends_on:
+      - ml-database
+      - ml-redis
+    networks:
+      - woragis-network
+    restart: unless-stopped
+
+  ml-database:
+    image: postgres:15-alpine
+    container_name: ml-database
+    environment:
+      - POSTGRES_USER=woragis
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=ml_service
+    ports:
+      - "5450:5432"
+    volumes:
+      - ml-db-data:/var/lib/postgresql/data
+    networks:
+      - woragis-network
+    restart: unless-stopped
+
+  ml-redis:
+    image: redis:7-alpine
+    container_name: ml-redis
+    ports:
+      - "6398:6379"
+    volumes:
+      - ml-redis-data:/data
+    networks:
+      - woragis-network
+    restart: unless-stopped
+
+volumes:
+  ml-db-data:
+  ml-redis-data:
+
+networks:
+  woragis-network:
+    external: true
+
