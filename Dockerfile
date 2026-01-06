@@ -14,9 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/
-COPY models/ ./models/
 
-# Create models directory if it doesn't exist
+# Create models directory (will be populated at runtime or by training)
 RUN mkdir -p models
 
 # Expose port
